@@ -1,0 +1,51 @@
+# Render blueprint - one web service runs the website, dashboard, API, Telegram bot and reminders.
+# Secrets (sync: false) are typed into Render's dashboard, never saved in this file.
+services:
+  - type: web
+    name: mediassist
+    runtime: python
+    plan: free            # free sleeps after 15 min without visits -> keep it awake (see DEPLOY.md) or use "starter"
+    region: singapore     # closest Render region to India
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd backend && python main.py
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: "on"
+      - key: CLINIC_NAME
+        value: City Clinic, Kota
+      - key: CLINIC_TZ
+        value: Asia/Kolkata
+      - key: MONGODB_DB
+        value: mediassist
+      - key: LLM_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: LLM_MODEL
+        value: openai/gpt-oss-120b
+      - key: STT_MODEL
+        value: whisper-large-v3
+      - key: FALLBACK_EMAIL
+        value: cityclinic.kota@gmail.com
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: CLINIC_PHONE
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: CAL_API_KEY
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CAL_WEBHOOK_SECRET
+        sync: false
+      - key: STAFF_CHAT_ID
+        sync: false

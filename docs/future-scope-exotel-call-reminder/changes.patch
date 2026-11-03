@@ -1,0 +1,283 @@
+diff --git a/.env.example b/.env.example
+index ccb16c9..49127f4 100644
+--- a/.env.example
++++ b/.env.example
+@@ -40,6 +40,17 @@ BOOKING_DAYS_AHEAD=7
+ MIN_LEAD_MINUTES=30
+ SESSION_TIMEOUT_MINUTES=30
+ 
++# ---------- Phone-call reminder 2 h before (Exotel, optional) ----------
++# Leave empty = no calls. Values: Exotel dashboard -> Settings -> API Settings, ExoPhones, App Bazaar.
++EXOTEL_SID=
++EXOTEL_API_KEY=
++EXOTEL_API_TOKEN=
++EXOTEL_SUBDOMAIN=api.exotel.com
++EXOTEL_CALLER_ID=
++EXOTEL_FLOW_ID=
++CALL_REMINDERS=on
++CALL_DAILY_LIMIT=20
++
+ # ---------- Dashboard login ----------
+ ADMIN_USERNAME=admin
+ ADMIN_PASSWORD=change-me
+diff --git a/README.md b/README.md
+index dbf27ce..ffb3fe6 100644
+--- a/README.md
++++ b/README.md
+@@ -125,6 +125,17 @@ The page refreshes itself every 20 seconds, so new bot bookings appear on their
+ 
+ **Editing the dashboard code** (needs Node.js): `cd dashboard`, `npm install`, `npm run dev` (live preview at http://localhost:5173). When done, run `npm run build` (the backend serves `dashboard/dist`).
+ 
++## 6c. Phone-call reminder (Exotel, optional)
++About **2 hours before** each visit the backend rings the patient's mobile through Exotel and plays a short reminder.
++It reaches every patient with a mobile number, also walk-ins without Telegram.
++- Fill the `EXOTEL_*` values in `.env` (see `.env.example`), then restart. `python check_setup.py` tests the keys.
++- Exotel → App Bazaar → create a flow **Greeting → Hangup** and put its ID in `EXOTEL_FLOW_ID`.
++  - Now (on your PC): use **fixed text** in the Greeting, e.g. "Namaste. This is City Clinic, Kota. This is a reminder about your appointment in about two hours. Please check Telegram for details. Thank you."
++  - After deployment: switch the Greeting to **text from URL** = `https://<your-site>/api/public/exotel/greeting` – it then says the patient's name, doctor, time and booking ID.
++- One call per booking (a reschedule allows a new one), only between 8 am and 9 pm, at most `CALL_DAILY_LIMIT` calls a day.
++- The dashboard shows "Call reminder <time>" or "Call reminder failed" under the appointment status.
++- **Trial account:** calls go only to numbers verified in Exotel (max 10), the trial lasts about 7 days, and credits are limited.
++
+ ## 7. Optional: Cal.com webhook
+ 
+ This tells patients when staff cancel or move a booking inside Cal.com.
+diff --git a/backend/check_setup.py b/backend/check_setup.py
+index dbc22a1..4c0c326 100644
+--- a/backend/check_setup.py
++++ b/backend/check_setup.py
+@@ -95,12 +95,28 @@ async def check_ai():
+         print(BAD, "AI call failed - check LLM_API_KEY / LLM_BASE_URL / LLM_MODEL")
+ 
+ 
++async def check_exotel():
++    print("\n5) Exotel call reminders (optional)")
++    if not settings.CALL_REMINDERS:
++        return print(WARN, "CALL_REMINDERS=off -> no phone-call reminders")
++    if not settings.exotel_ready:
++        return print(WARN, "EXOTEL_* values not all filled in -> no phone-call reminders (Telegram reminders still work)")
++    import exotel
++    try:
++        info = (await exotel.account_info()).get("Account", {})
++        print(OK, f"Exotel account: {info.get('FriendlyName') or settings.EXOTEL_SID} ({info.get('Status', '?')}, {info.get('Type', '?')})")
++        print(OK, f"Caller ID {settings.EXOTEL_CALLER_ID} · flow {settings.EXOTEL_FLOW_ID} · max {settings.CALL_DAILY_LIMIT} calls/day")
++    except Exception as exc:  # noqa: BLE001
++        print(BAD, f"Exotel: {exc}")
++
++
+ async def main():
+     print(f"MediAssist setup check - clinic: {settings.CLINIC_NAME}")
+     mongo_ok = await check_mongo()
+     await check_telegram()
+     await check_calcom(mongo_ok)
+     await check_ai()
++    await check_exotel()
+     print("\nDone.")
+ 
+ 
+diff --git a/backend/config.py b/backend/config.py
+index 8dbb015..7f353fe 100644
+--- a/backend/config.py
++++ b/backend/config.py
+@@ -65,6 +65,23 @@ class Settings:
+     # How often to check Cal.com for bookings changed outside our system (email links, Cal.com app)
+     CAL_SYNC_SECONDS = int(_get("CAL_SYNC_SECONDS", "300"))
+ 
++    # Phone-call reminder 2 hours before the visit (Exotel). Off until all EXOTEL_* values are filled in.
++    EXOTEL_SID = _get("EXOTEL_SID", "")              # Account SID (Exotel dashboard -> API settings)
++    EXOTEL_API_KEY = _get("EXOTEL_API_KEY", "")
++    EXOTEL_API_TOKEN = _get("EXOTEL_API_TOKEN", "")
++    EXOTEL_SUBDOMAIN = _get("EXOTEL_SUBDOMAIN", "api.exotel.com")  # Mumbai accounts: api.in.exotel.com
++    EXOTEL_CALLER_ID = _get("EXOTEL_CALLER_ID", "")  # your ExoPhone number
++    EXOTEL_FLOW_ID = _get("EXOTEL_FLOW_ID", "")      # App Bazaar -> My Apps -> the reminder flow's ID
++    CALL_REMINDERS = _get("CALL_REMINDERS", "on").lower() in ("on", "1", "true", "yes")
++    CALL_DAILY_LIMIT = int(_get("CALL_DAILY_LIMIT", "20"))  # protects trial credits
++    CALL_EARLIEST_HOUR = int(_get("CALL_EARLIEST_HOUR", "8"))  # no calls before 8 am ...
++    CALL_LATEST_HOUR = int(_get("CALL_LATEST_HOUR", "21"))     # ... or after 9 pm (clinic time)
++
++    @property
++    def exotel_ready(self):
++        return self.CALL_REMINDERS and all([self.EXOTEL_SID, self.EXOTEL_API_KEY, self.EXOTEL_API_TOKEN,
++                                            self.EXOTEL_CALLER_ID, self.EXOTEL_FLOW_ID])
++
+     # Dashboard login
+     ADMIN_USERNAME = _get("ADMIN_USERNAME", "admin")
+     ADMIN_PASSWORD = _get("ADMIN_PASSWORD", "change-me")
+diff --git a/backend/engine.py b/backend/engine.py
+index e8650a7..11c9c7c 100644
+--- a/backend/engine.py
++++ b/backend/engine.py
+@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
+ import ai
+ import calcom
+ import db
++import exotel
+ from config import settings
+ from texts import CATEGORIES, Raw, dept_name, fmt_date, fmt_time, t
+ from validators import clean_email, clean_name, clean_phone
+@@ -1064,7 +1065,56 @@ class Engine:
+             return await self.ask_cancel(ctx, appt)
+         return await self.start_resched(ctx, appt)
+ 
++    async def run_call_reminders(self):
++        """Phone-call reminder (Exotel) about 2 hours before the visit - reaches every patient with a mobile
++        number, including walk-ins without Telegram. One attempt per booking (a reschedule allows a new one)."""
++        if not settings.exotel_ready:
++            return 0
++        now = db.utcnow()
++        local_now = now.astimezone(TZ)
++        if not (settings.CALL_EARLIEST_HOUR <= local_now.hour < settings.CALL_LATEST_HOUR):
++            return 0  # no calls at night; early-morning visits get their call at 8 am instead
++        day_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
++        made_today = await db.appointments.count_documents({"call_reminder.at": {"$gte": day_start}})
++        due = await db.appointments.find({
++            "status": "booked", "phone": {"$nin": [None, ""]}, "reminders_sent": {"$ne": "call"},
++            "start": {"$gt": now + timedelta(minutes=15), "$lte": now + timedelta(hours=2)},
++        }).sort("start", 1).to_list(None)
++        placed = 0
++        for appt in due:
++            if made_today >= settings.CALL_DAILY_LIMIT:
++                log.warning("Call reminders: daily limit of %s reached", settings.CALL_DAILY_LIMIT)
++                break
++            record = {"at": db.utcnow()}
++            try:
++                result = await exotel.call_reminder(appt["phone"], appt["_id"])
++                record.update({"status": "placed", "sid": result.get("sid")})
++                placed += 1
++            except exotel.ExotelError as exc:
++                log.warning("Call reminder failed for %s: %s", appt["_id"], exc)
++                record.update({"status": "failed", "error": str(exc)[:200]})
++            made_today += 1
++            await db.appointments.update_one({"_id": appt["_id"]},
++                                             {"$set": {"call_reminder": record}, "$push": {"reminders_sent": "call"}})
++        return placed
++
++    def call_greeting(self, appt):
++        """What the reminder call says (Exotel reads it aloud). Used only when the flow fetches text from our URL."""
++        if not appt or appt.get("status") != "booked":
++            return (f"Namaste. This is {settings.CLINIC_NAME}. This is a reminder about your appointment today. "
++                    "For details, please check Telegram or call the clinic. Thank you.")
++        local = db.aware(appt["start"]).astimezone(TZ)
++        first = (appt.get("patient_name") or "").split(" ")[0]
++        return (f"Namaste {first}. This is {settings.CLINIC_NAME}. Your appointment with {appt['doctor_name']} "
++                f"is today at {local.strftime('%I:%M %p').lstrip('0')}. Your booking I D is "
++                f"{' '.join(appt['_id'].replace('-', ' '))}. Please arrive 10 minutes early. "
++                "To cancel or change the time, use Telegram or call the clinic. Thank you.")
++
+     async def run_reminders(self):
++        try:
++            await self.run_call_reminders()
++        except Exception:
++            log.exception("call reminders failed")
+         now = db.utcnow()
+         due = await db.appointments.find(
+             {"status": "booked", "start": {"$gt": now, "$lte": now + timedelta(hours=24)}}
+diff --git a/backend/public_api.py b/backend/public_api.py
+index a9c1ff1..6f8ee17 100644
+--- a/backend/public_api.py
++++ b/backend/public_api.py
+@@ -11,7 +11,7 @@ from datetime import timedelta
+ from pathlib import Path
+ from zoneinfo import ZoneInfo
+ 
+-from fastapi import APIRouter, HTTPException, Request
++from fastapi import APIRouter, HTTPException, Request, Response
+ from pydantic import BaseModel
+ 
+ import db
+@@ -128,3 +128,19 @@ async def track(body: TrackIn, request: Request):
+     upcoming = sorted([a for a in appts if a.get("status") == "booked" and db.aware(a["start"]) >= now], key=lambda a: db.aware(a["start"]))
+     others = [a for a in appts if a not in upcoming]
+     return {"items": [await _appt_view(a) for a in upcoming + others] + [_ticket_view(t) for t in tickets]}
++
++
++@router.api_route("/exotel/greeting", methods=["GET", "HEAD"])
++async def exotel_greeting(request: Request, CustomField: str = "", CallSid: str = ""):
++    """Text the Exotel reminder call reads aloud ("Greeting -> dynamic text from URL").
++    Exotel calls this with CallSid + CustomField (= the booking ID). Needs a public URL, i.e. after deployment."""
++    _limit(request)
++    from engine import Engine
++    appt = None
++    if CallSid and re.fullmatch(r"APT-\d{4,6}", CustomField or ""):
++        appt = await db.appointments.find_one({"_id": CustomField})
++    text = Engine.call_greeting(None, appt)
++    # same headers for HEAD and GET (the server leaves out the body for HEAD); exactly "text/plain" as Exotel asks
++    response = Response(content=text.encode("utf-8"))
++    response.headers["Content-Type"] = "text/plain"
++    return response
+diff --git a/backend/tests/simulate_chat.py b/backend/tests/simulate_chat.py
+index d7a518a..d40929f 100644
+--- a/backend/tests/simulate_chat.py
++++ b/backend/tests/simulate_chat.py
+@@ -644,7 +644,56 @@ async def main():
+     finally:
+         calcom.get_slots = fake_get_slots
+ 
+-    print("\n" + "=" * 70 + "\nALL 20 TESTS PASSED ✅")
++    print("=" * 70, "\nTEST 21: phone-call reminder (Exotel) about 2 hours before")
++    import exotel
++    calls = []
++    async def fake_call(phone, appt_id):
++        if phone.endswith("0000000"):
++            raise exotel.ExotelError("Exotel 403: number not verified")
++        calls.append((phone, appt_id)); return {"sid": f"sid{len(calls)}", "status": "in-progress"}
++    real_call = exotel.call_reminder; exotel.call_reminder = fake_call
++    saved = {k: getattr(settings, k) for k in ("EXOTEL_SID", "EXOTEL_API_KEY", "EXOTEL_API_TOKEN", "EXOTEL_CALLER_ID",
++                                               "EXOTEL_FLOW_ID", "CALL_EARLIEST_HOUR", "CALL_LATEST_HOUR", "CALL_DAILY_LIMIT")}
++    try:
++        await db.appointments.update_many({}, {"$set": {"status": "completed"}})  # only the bookings below count
++        assert await engine.run_call_reminders() == 0          # not configured -> no calls
++        for k in ("EXOTEL_SID", "EXOTEL_API_KEY", "EXOTEL_API_TOKEN", "EXOTEL_CALLER_ID", "EXOTEL_FLOW_ID"):
++            setattr(settings, k, "x")
++        settings.CALL_EARLIEST_HOUR, settings.CALL_LATEST_HOUR = 0, 24
++        base = {"status": "booked", "doctor_name": "Dr. Rakesh Verma", "reminders_sent": [], "created_at": db.utcnow()}
++        await db.appointments.insert_many([
++            {**base, "_id": "APT-0901", "patient_name": "Walk In", "phone": "+919811100001", "chat_id": None,
++             "start": db.utcnow() + timedelta(minutes=100)},          # due -> call
++            {**base, "_id": "APT-0902", "patient_name": "Later", "phone": "+919811100002", "chat_id": None,
++             "start": db.utcnow() + timedelta(hours=5)},              # not yet
++            {**base, "_id": "APT-0903", "patient_name": "Bad Number", "phone": "+919810000000", "chat_id": None,
++             "start": db.utcnow() + timedelta(minutes=90)},           # Exotel refuses -> recorded, not retried
++            {**base, "_id": "APT-0904", "patient_name": "Too Close", "phone": "+919811100004", "chat_id": None,
++             "start": db.utcnow() + timedelta(minutes=10)},           # less than 15 min left -> no call
++        ])
++        assert await engine.run_call_reminders() == 1 and calls == [("+919811100001", "APT-0901")]
++        assert (await db.appointments.find_one({"_id": "APT-0901"}))["call_reminder"]["status"] == "placed"
++        assert (await db.appointments.find_one({"_id": "APT-0903"}))["call_reminder"]["status"] == "failed"
++        assert await engine.run_call_reminders() == 0 and len(calls) == 1      # never twice
++        # rescheduled booking -> a new call is allowed for the new time
++        await db.appointments.update_one({"_id": "APT-0902"}, {"$set": {"start": db.utcnow() + timedelta(minutes=110)}})
++        settings.CALL_DAILY_LIMIT = 2                                           # 2 already made today -> limit hit
++        assert await engine.run_call_reminders() == 0
++        settings.CALL_DAILY_LIMIT = 20
++        settings.CALL_EARLIEST_HOUR = settings.CALL_LATEST_HOUR = 24            # "night" -> no calls
++        assert await engine.run_call_reminders() == 0
++        settings.CALL_EARLIEST_HOUR, settings.CALL_LATEST_HOUR = 0, 24
++        assert await engine.run_call_reminders() == 1 and calls[-1][1] == "APT-0902"
++        # what the call says (dynamic greeting)
++        text = Engine.call_greeting(None, await db.appointments.find_one({"_id": "APT-0901"}))
++        assert "Namaste Walk" in text and "Dr. Rakesh Verma" in text and "A P T" in text
++        assert "reminder about your appointment" in Engine.call_greeting(None, None)
++    finally:
++        exotel.call_reminder = real_call
++        for k, v in saved.items():
++            setattr(settings, k, v)
++
++    print("\n" + "=" * 70 + "\nALL 21 TESTS PASSED ✅")
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/dashboard/src/components/AppointmentsTable.jsx b/dashboard/src/components/AppointmentsTable.jsx
+index c9f3469..87cedb0 100644
+--- a/dashboard/src/components/AppointmentsTable.jsx
++++ b/dashboard/src/components/AppointmentsTable.jsx
+@@ -69,6 +69,9 @@ export default function AppointmentsTable({ rows, refresh, notify, showDate = tr
+                   <ApptBadge status={a.status} />
+                   {a.status === "booked" && a.attendance_confirmed && <div className="small text-success mt-1"><i className="bi bi-check2-circle" /> Confirmed</div>}
+                   {a.status === "cancelled" && <div className="small text-muted mt-1">{{ patient: "by patient", clinic: "by clinic", calcom: "via Cal.com / email" }[a.cancelled_by] || ""}</div>}
++                  {a.call_reminder && (a.call_reminder.status === "placed"
++                    ? <div className="small text-muted mt-1" title={`Exotel call ${a.call_reminder.sid || ""}`}><i className="bi bi-telephone-outbound" /> Call reminder {fmtTime(a.call_reminder.at)}</div>
++                    : <div className="small text-danger mt-1" title={a.call_reminder.error || ""}><i className="bi bi-telephone-x" /> Call reminder failed</div>)}
+                   {a.history && a.history.length > 0 && <div className="small text-muted mt-1"><i className="bi bi-arrow-repeat" /> moved {a.history.length}×</div>}
+                 </td>
+                 {!compact && (

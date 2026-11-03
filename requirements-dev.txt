@@ -1,0 +1,3 @@
+# Extra packages for the offline tests (backend/tests) - not needed on the server
+-r requirements.txt
+mongomock>=4.1

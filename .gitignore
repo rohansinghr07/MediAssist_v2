@@ -1,0 +1,26 @@
+# --- secrets: NEVER save these in git ---
+.env
+*.env.local
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# --- Node / React dashboard ---
+dashboard/node_modules/
+# (dashboard/dist IS kept: the backend serves the built dashboard from it)
+
+# --- editors / OS ---
+.vscode/
+.idea/
+.antigravity/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- logs / temp ---
+*.log
+*.tmp
+backups/

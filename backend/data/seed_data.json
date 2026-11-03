@@ -1,0 +1,192 @@
+{
+  "clinic": {
+    "name": "City Clinic, Kota",
+    "address": "Aerodrome, Kota, Rajasthan 324007",
+    "email": "cityclinic.kota@gmail.com",
+    "map_query": "Aerodrome, Kota, Rajasthan 324007",
+    "timezone": "Asia/Kolkata",
+    "working_hours": "09:00-20:00",
+    "languages": [
+      "Hindi",
+      "English"
+    ],
+    "slot_minutes": 10,
+    "min_booking_notice_minutes": 30
+  },
+  "departments": [
+    {
+      "_id": "general_medicine",
+      "name_en": "General Medicine",
+      "name_hi": "सामान्य चिकित्सा",
+      "order": 1
+    },
+    {
+      "_id": "pediatrics",
+      "name_en": "Pediatrics",
+      "name_hi": "बाल रोग",
+      "order": 2
+    },
+    {
+      "_id": "orthopedics",
+      "name_en": "Orthopedics",
+      "name_hi": "हड्डी रोग",
+      "order": 3
+    },
+    {
+      "_id": "dermatology",
+      "name_en": "Dermatology",
+      "name_hi": "त्वचा रोग",
+      "order": 4
+    }
+  ],
+  "doctors": [
+    {
+      "_id": "DR001",
+      "name": "Dr. Anjali Mehra",
+      "department": "general_medicine",
+      "experience_years": 8,
+      "replaces": "anjali_mehra",
+      "slots": {
+        "mon": "09:00-13:00,17:00-20:00",
+        "tue": "09:00-13:00",
+        "wed": "09:00-13:00,17:00-20:00",
+        "thu": "09:00-13:00",
+        "fri": "09:00-13:00,17:00-20:00",
+        "sat": "09:00-13:00",
+        "sun": ""
+      },
+      "cal_schedule_id": 2557922,
+      "cal_event_type_id": 7655292,
+      "active": true
+    },
+    {
+      "_id": "DR002",
+      "name": "Dr. Rakesh Verma",
+      "department": "general_medicine",
+      "experience_years": 12,
+      "replaces": "rakesh_verma",
+      "slots": {
+        "mon": "17:00-20:00",
+        "tue": "10:00-13:00,17:00-20:00",
+        "wed": "17:00-20:00",
+        "thu": "10:00-13:00,17:00-20:00",
+        "fri": "17:00-20:00",
+        "sat": "10:00-13:00,17:00-20:00",
+        "sun": ""
+      },
+      "cal_schedule_id": 2557923,
+      "cal_event_type_id": 7655294,
+      "active": true
+    },
+    {
+      "_id": "DR003",
+      "name": "Dr. Priya Sharma",
+      "department": "pediatrics",
+      "experience_years": 6,
+      "replaces": "priya_sharma",
+      "slots": {
+        "mon": "10:00-13:00",
+        "tue": "10:00-13:00",
+        "wed": "10:00-13:00",
+        "thu": "10:00-13:00",
+        "fri": "10:00-13:00",
+        "sat": "10:00-13:00",
+        "sun": ""
+      },
+      "cal_schedule_id": 2557924,
+      "cal_event_type_id": 7655295,
+      "active": true
+    },
+    {
+      "_id": "DR004",
+      "name": "Dr. Arjun Kapoor",
+      "department": "pediatrics",
+      "experience_years": 10,
+      "replaces": "arjun_kapoor",
+      "slots": {
+        "mon": "17:00-20:00",
+        "tue": "17:00-20:00",
+        "wed": "17:00-20:00",
+        "thu": "17:00-20:00",
+        "fri": "17:00-20:00",
+        "sat": "17:00-20:00",
+        "sun": ""
+      },
+      "cal_schedule_id": 2557925,
+      "cal_event_type_id": 7655296,
+      "active": true
+    },
+    {
+      "_id": "DR007",
+      "name": "Dr. Sneha Iyer",
+      "department": "orthopedics",
+      "experience_years": 9,
+      "slots": {
+        "mon": "11:00-14:00",
+        "tue": "11:00-14:00",
+        "wed": "11:00-14:00",
+        "thu": "11:00-14:00",
+        "fri": "11:00-14:00",
+        "sat": "11:00-14:00",
+        "sun": ""
+      },
+      "cal_schedule_id": 2557928,
+      "cal_event_type_id": 7655299,
+      "active": true
+    },
+    {
+      "_id": "DR008",
+      "name": "Dr. Kabir Menon",
+      "department": "orthopedics",
+      "experience_years": 14,
+      "slots": {
+        "mon": "17:00-20:00",
+        "tue": "17:00-20:00",
+        "wed": "17:00-20:00",
+        "thu": "17:00-20:00",
+        "fri": "17:00-20:00",
+        "sat": "17:00-20:00",
+        "sun": ""
+      },
+      "cal_schedule_id": 2557929,
+      "cal_event_type_id": 7655303,
+      "active": true
+    },
+    {
+      "_id": "DR009",
+      "name": "Dr. Anita Rao",
+      "department": "dermatology",
+      "experience_years": 7,
+      "slots": {
+        "mon": "11:00-14:00",
+        "tue": "11:00-14:00",
+        "wed": "11:00-14:00",
+        "thu": "11:00-14:00",
+        "fri": "11:00-14:00",
+        "sat": "11:00-14:00",
+        "sun": ""
+      },
+      "cal_schedule_id": 2557931,
+      "cal_event_type_id": 7655304,
+      "active": true
+    },
+    {
+      "_id": "DR010",
+      "name": "Dr. Rohan Malhotra",
+      "department": "dermatology",
+      "experience_years": 11,
+      "slots": {
+        "mon": "17:00-20:00",
+        "tue": "17:00-20:00",
+        "wed": "17:00-20:00",
+        "thu": "17:00-20:00",
+        "fri": "17:00-20:00",
+        "sat": "17:00-20:00",
+        "sun": ""
+      },
+      "cal_schedule_id": 2557932,
+      "cal_event_type_id": 7655308,
+      "active": true
+    }
+  ]
+}
